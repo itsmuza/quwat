@@ -1,20 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Member } from 'apps/nestar/src/libs/dto/member/member';
-import { Property } from 'apps/nestar/src/libs/dto/property/property';
-import { MemberStatus, MemberType } from 'apps/nestar/src/libs/enums/member.enum';
-import { PropertyStatus } from 'apps/nestar/src/libs/enums/property.enum';
+import { Member } from 'apps/quwat/src/libs/dto/member/member';
+import { Property } from 'apps/quwat/src/libs/dto/property/property';
+import { MemberStatus, MemberType } from 'apps/quwat/src/libs/enums/member.enum';
+import { PropertyStatus } from 'apps/quwat/src/libs/enums/property.enum';
 import { Model } from 'mongoose';
 
 @Injectable()
-export class NestarBatchService {
+export class QuwatBatchService {
 	constructor(
 		@InjectModel('Property') private readonly propertyModel: Model<Property>,
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
 	) {}
 
 	getHello(): string {
-		return 'Welcome Nestar Batch server!';
+		return 'Welcome Quwat Batch server!';
 	}
 
 	public async batchRollback(): Promise<void> {

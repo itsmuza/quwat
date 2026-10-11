@@ -1,3 +1,5 @@
+# Quwat
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
@@ -23,7 +25,7 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Quwat is a [NestJS](https://github.com/nestjs/nest) GraphQL backend monorepo with API (`quwat`) and batch (`quwat-batch`) applications.
 
 ## Project setup
 
@@ -40,8 +42,18 @@ $ npm run start
 # watch mode
 $ npm run start:dev
 
+# batch watch mode
+$ npm run start:dev:batch
+
+# build the API and batch applications
+$ npm run build -- quwat
+$ npm run build -- quwat-batch
+
 # production mode
 $ npm run start:prod
+
+# batch production mode
+$ npm run start:prod:batch
 ```
 
 ## Run tests

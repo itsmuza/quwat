@@ -1,6 +1,6 @@
 import { BadRequestException, CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from '../auth.service';
-import { Message } from 'apps/nestar/src/libs/enums/common.enum';
+import { Message } from 'apps/quwat/src/libs/enums/common.enum';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

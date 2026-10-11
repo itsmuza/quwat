@@ -1,31 +1,31 @@
 {
   "$schema": "https://json.schemastore.org/nest-cli",
   "collection": "@nestjs/schematics",
-  "sourceRoot": "apps/nestar/src",
+  "sourceRoot": "apps/quwat/src",
   "compilerOptions": {
     "deleteOutDir": true,
     "webpack": true,
-    "tsConfigPath": "apps/nestar/tsconfig.app.json"
+    "tsConfigPath": "apps/quwat/tsconfig.app.json"
   },
   "monorepo": true,
-  "root": "apps/nestar",
+  "root": "apps/quwat",
   "projects": {
-    "nestar": {
+    "quwat": {
       "type": "application",
-      "root": "apps/nestar",
+      "root": "apps/quwat",
       "entryFile": "main",
-      "sourceRoot": "apps/nestar/src",
+      "sourceRoot": "apps/quwat/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/nestar/tsconfig.app.json"
+        "tsConfigPath": "apps/quwat/tsconfig.app.json"
       }
     },
-    "nestar-batch": {
+    "quwat-batch": {
       "type": "application",
-      "root": "apps/nestar-batch",
+      "root": "apps/quwat-batch",
       "entryFile": "main",
-      "sourceRoot": "apps/nestar-batch/src",
+      "sourceRoot": "apps/quwat-batch/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/nestar-batch/tsconfig.app.json"
+        "tsConfigPath": "apps/quwat-batch/tsconfig.app.json"
       }
     }
   }

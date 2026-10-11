@@ -1,12 +1,12 @@
 import { Controller, Get, Logger } from '@nestjs/common';
-import { NestarBatchService } from './nestar-batch.service';
+import { QuwatBatchService } from './quwat-batch.service';
 import { Cron, Interval, Timeout } from '@nestjs/schedule';
 import { BATCH_ROLLBACK, BATCH_TOP_AGENTS, BATCH_TOP_PROPERTIES } from './lib/config';
 
 @Controller()
-export class NestarBatchController {
+export class QuwatBatchController {
 	private logger: Logger = new Logger('BatchController');
-	constructor(private readonly batchService: NestarBatchService) {}
+	constructor(private readonly batchService: QuwatBatchService) {}
 
 	@Timeout(1000)
 	handleTimeout() {
