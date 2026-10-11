@@ -1,35 +1,39 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, Types } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
-import { Member } from '../../libs/dto/member/member';
-import { T } from '../../libs/types/common';
 import { JwtService } from '@nestjs/jwt';
-import { shapeIntoMongoObject } from '../../libs/config';
+import { Member } from '../../libs/dto/member/member';
+import { MemberStatus } from '../../libs/enums/member.enum';
 
 @Injectable()
 export class AuthService {
-	constructor(private jwtService: JwtService) {}
+	constructor(
+		private jwtService: JwtService,
+		@InjectModel('Member') private readonly memberModel: Model<Member>,
+	) {}
 
-	async hashPassword(memberPassword: string): Promise<string> {
-		const salt = await bcrypt.genSalt();
-		return await bcrypt.hash(memberPassword, salt);
+	async hashPassword(password: string): Promise<string> {
+		return bcrypt.hash(password, await bcrypt.genSalt());
 	}
-
-	async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-		return await bcrypt.compare(password, hashedPassword);
+	async comparePassword(password: string, hash: string): Promise<boolean> {
+		return bcrypt.compare(password, hash);
 	}
-
 	async createToken(member: Member): Promise<string> {
-		const payload: T = {};
-		Object.keys(member['_doc'] ?? member).map((ele) => {
-			payload[`${ele}`] = member[`${ele}`];
-		});
-		delete payload.memberPassword;
-		return await this.jwtService.signAsync(payload);
+		return this.jwtService.signAsync({ _id: String(member._id) });
 	}
-
 	async verifyToken(token: string): Promise<Member> {
-		const member = await this.jwtService.verifyAsync(token);
-		member._id = shapeIntoMongoObject(member._id);
-		return member;
+		try {
+			const payload = await this.jwtService.verifyAsync<{ _id: string }>(token);
+			if (typeof payload._id !== 'string' || !Types.ObjectId.isValid(payload._id)) throw new Error('Invalid identity');
+			const member = await this.memberModel
+				.findOne({ _id: payload._id, memberStatus: MemberStatus.ACTIVE })
+				.lean()
+				.exec();
+			if (!member) throw new Error('Inactive identity');
+			return member;
+		} catch {
+			throw new UnauthorizedException('Not authenticated');
+		}
 	}
 }

@@ -1,6 +1,6 @@
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { MemberService } from './member.service';
-import { InternalServerErrorException, UseGuards } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { AgentsInquiry, LoginInput, MemberInput, MembersInquiry } from '../../libs/dto/member/member.input';
 import { Member, Members } from '../../libs/dto/member/member';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -9,7 +9,7 @@ import { ObjectId } from 'bson';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { MemberType } from '../../libs/enums/member.enum';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { AdminMemberUpdate, MemberUpdate } from '../../libs/dto/member/member.update';
 import { getSerialForImage, shapeIntoMongoObject, validMimeTypes } from '../../libs/config';
 import { WithoutGuard } from '../auth/guards/without.guard';
 import { GraphQLUpload, FileUpload } from 'graphql-upload';
@@ -23,7 +23,6 @@ export class MemberResolver {
 	@Mutation(() => Member)
 	async signup(@Args('input') input: MemberInput): Promise<Member> {
 		console.log('Mutation: signup');
-		console.log('input:', input);
 		return await this.memberService.signup(input);
 	}
 
@@ -37,7 +36,6 @@ export class MemberResolver {
 	@Mutation(() => Member)
 	async updateMember(@Args('input') input: MemberUpdate, @AuthMember('_id') memberId: ObjectId): Promise<Member> {
 		console.log('Mutation: updateMember');
-		delete input._id;
 		return await this.memberService.updateMember(memberId, input);
 	}
 
@@ -49,7 +47,7 @@ export class MemberResolver {
 		return 'hi ' + memberNick;
 	}
 
-	@Roles(MemberType.USER)
+	@Roles(MemberType.CLIENT)
 	@UseGuards(RolesGuard)
 	@Query(() => String)
 	async checkAuthRoles(@AuthMember() authMember: Member): Promise<string> {
@@ -94,7 +92,7 @@ export class MemberResolver {
 	@Roles(MemberType.ADMIN)
 	@UseGuards(RolesGuard)
 	@Mutation(() => Member)
-	async updateMemberByAdmin(@Args('input') input: MemberUpdate): Promise<Member> {
+	async updateMemberByAdmin(@Args('input') input: AdminMemberUpdate): Promise<Member> {
 		console.log('Mutation: updateMemberByAdmin');
 		return this.memberService.updateMemberByAdmin(input);
 	}
@@ -105,7 +103,7 @@ export class MemberResolver {
 	public async imageUploader(
 		@Args({ name: 'file', type: () => GraphQLUpload })
 		{ createReadStream, filename, mimetype }: FileUpload,
-		@Args('target') target: String,
+		@Args('target') target: string,
 	): Promise<string> {
 		console.log('Mutation: imageUploader');
 
@@ -133,14 +131,14 @@ export class MemberResolver {
 	public async imagesUploader(
 		@Args('files', { type: () => [GraphQLUpload] })
 		files: Promise<FileUpload>[],
-		@Args('target') target: String,
+		@Args('target') target: string,
 	): Promise<string[]> {
 		console.log('Mutation: imagesUploader');
 
 		const uploadedImages: string[] = [];
 		const promisedList = files.map(async (img: Promise<FileUpload>, index: number): Promise<void> => {
 			try {
-				const { filename, mimetype, encoding, createReadStream } = await img;
+				const { filename, mimetype, createReadStream } = await img;
 
 				const validMime = validMimeTypes.includes(mimetype);
 				if (!validMime) throw new Error(Message.PROVIDE_ALLOWED_FORMAT);

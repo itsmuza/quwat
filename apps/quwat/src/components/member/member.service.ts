@@ -7,34 +7,36 @@ import { AgentsInquiry, LoginInput, MemberInput, MembersInquiry } from '../../li
 import { MemberStatus, MemberType } from '../../libs/enums/member.enum';
 import { Direction, Message } from '../../libs/enums/common.enum';
 import { AuthService } from '../auth/auth.service';
-import { MemberUpdate } from '../../libs/dto/member/member.update';
+import { AdminMemberUpdate, MemberUpdate } from '../../libs/dto/member/member.update';
 import { StatisticModifier, T } from '../../libs/types/common';
 import { ViewService } from '../view/view.service';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeService } from '../like/like.service';
-import { Follower, Following, MeFollowed } from '../../libs/dto/follow/follow';
 import { lookupAuthMemberLiked } from '../../libs/config';
 
 @Injectable()
 export class MemberService {
 	constructor(
 		@InjectModel('Member') private readonly memberModel: Model<Member>,
-		@InjectModel('Follow') private readonly followModel: Model<Follower | Following>,
 		private authService: AuthService,
 		private viewService: ViewService,
 		private likeService: LikeService,
 	) {}
 
 	async signup(input: MemberInput): Promise<Member> {
-		input.memberPassword = await this.authService.hashPassword(input.memberPassword);
+		const data = {
+			memberNick: input.memberNick,
+			memberPhone: input.memberPhone,
+			memberPassword: await this.authService.hashPassword(input.memberPassword),
+			memberType: MemberType.CLIENT,
+		};
 		try {
-			const result = await this.memberModel.create(input);
+			const result = await this.memberModel.create(data);
 			result.accessToken = await this.authService.createToken(result);
 			return result;
 		} catch (err) {
-			console.log('Error, Service.model:', err);
 			throw new BadRequestException(Message.USED_MEMBER_NICK_OR_PHONE);
 		}
 	}
@@ -48,17 +50,18 @@ export class MemberService {
 			throw new InternalServerErrorException(Message.BLOCKED_USER);
 		}
 
-		const isMatch = this.authService.comparePassword(input.memberPassword, response.memberPassword!);
+		const isMatch = await this.authService.comparePassword(memberPassword, response.memberPassword!);
 		if (!isMatch) throw new InternalServerErrorException(Message.WRONG_PASSWORD);
 		response.accessToken = await this.authService.createToken(response);
 		return response;
 	}
 
 	async updateMember(memberId: ObjectId, input: MemberUpdate): Promise<Member> {
+		const data = await this.profileChanges(input);
 		const result = await this.memberModel.findOneAndUpdate(
 			{ _id: memberId, memberStatus: MemberStatus.ACTIVE },
-			input,
-			{ new: true },
+			{ $set: data },
+			{ new: true, runValidators: true },
 		);
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
 		result.accessToken = await this.authService.createToken(result);
@@ -85,16 +88,9 @@ export class MemberService {
 
 			const likeInput = { memberId: memberId, likeRefId: targetId, likeGroup: LikeGroup.MEMBER };
 			targetMember.meLiked = await this.likeService.checkLikeExistence(likeInput);
-
-			targetMember.meFollowed = await this.checkSubscribtion(memberId, targetId);
 		}
 
 		return targetMember;
-	}
-
-	private async checkSubscribtion(followerId: ObjectId, followingId: ObjectId): Promise<MeFollowed[]> {
-		const result = await this.followModel.findOne({ followingId: followingId, followerId: followerId }).exec();
-		return result ? [{ followerId: followerId, followingId: followingId, myFollowing: true }] : [];
 	}
 
 	async getAgents(memberId: ObjectId, input: AgentsInquiry): Promise<Members> {
@@ -111,7 +107,11 @@ export class MemberService {
 				{ $sort: sort },
 				{
 					$facet: {
-						list: [{ $skip: (input.page - 1) * input.limit }, { $limit: input.limit }, lookupAuthMemberLiked(memberId)],
+						list: [
+							{ $skip: (input.page - 1) * input.limit },
+							{ $limit: input.limit },
+							lookupAuthMemberLiked(memberId, LikeGroup.MEMBER),
+						],
 						metaCounter: [{ $count: 'total' }],
 					},
 				},
@@ -171,16 +171,37 @@ export class MemberService {
 		}
 
 		// meLiked
-		// meFollowed
 
 		return result[0];
 	}
 
-	public async updateMemberByAdmin(input: MemberUpdate): Promise<Member> {
-		const result = await this.memberModel.findOneAndUpdate({ _id: input._id }, input, { new: true }).exec();
+	private async profileChanges(input: MemberUpdate): Promise<Record<string, unknown>> {
+		const data: Record<string, unknown> = {};
+		for (const key of [
+			'memberNick',
+			'memberPhone',
+			'memberFullName',
+			'memberImage',
+			'memberAddress',
+			'memberDesc',
+		] as const) {
+			if (input[key] !== undefined && input[key] !== null) data[key] = input[key];
+		}
+		if (input.memberPassword != null) data.memberPassword = await this.authService.hashPassword(input.memberPassword);
+		return data;
+	}
 
+	public async updateMemberByAdmin(input: AdminMemberUpdate): Promise<Member> {
+		const data = await this.profileChanges(input);
+		if (input.memberType != null) data.memberType = input.memberType;
+		if (input.memberStatus != null) {
+			data.memberStatus = input.memberStatus;
+			data.deletedAt = input.memberStatus === MemberStatus.DELETE ? new Date() : null;
+		}
+		const result = await this.memberModel
+			.findOneAndUpdate({ _id: input._id }, { $set: data }, { new: true, runValidators: true })
+			.exec();
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);
-
 		return result;
 	}
 

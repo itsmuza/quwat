@@ -6,7 +6,7 @@ const MemberSchema = new Schema(
 		memberType: {
 			type: String,
 			enum: MemberType,
-			default: MemberType.USER,
+			default: MemberType.CLIENT,
 		},
 
 		memberStatus: {
@@ -54,26 +54,6 @@ const MemberSchema = new Schema(
 
 		memberDesc: {
 			type: String,
-		},
-
-		memberProperties: {
-			type: Number,
-			default: 0,
-		},
-
-		memberArticles: {
-			type: Number,
-			default: 0,
-		},
-
-		memberFollowers: {
-			type: Number,
-			default: 0,
-		},
-
-		memberFollowings: {
-			type: Number,
-			default: 0,
 		},
 
 		memberPoints: {

@@ -25,7 +25,11 @@
 
 ## Description
 
-Quwat is a [NestJS](https://github.com/nestjs/nest) GraphQL backend monorepo with API (`quwat`) and batch (`quwat-batch`) applications.
+Quwat is a [NestJS](https://github.com/nestjs/nest) GraphQL backend for a construction-materials store, with API (`quwat`) and batch (`quwat-batch`) applications. Product management is ADMIN-only; roles are CLIENT, ADMIN and AGENT. Products have free-text names and no SKU, subtype or agent ownership.
+
+The catalog milestone replaces the real-estate API and removes Board/Follow. Orders, stock receipts and payment confirmation are future milestones. See [backend handoff](docs/ai/BACKEND_MIGRATION.md) and [frontend contract changes](docs/ai/FRONTEND_MIGRATION.md).
+
+Unit/contract tests do not connect to a database. Database-backed e2e tests require an explicitly configured isolated test environment; do not point them at deployment data. `npm run lint` checks without changing files.
 
 ## Project setup
 

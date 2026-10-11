@@ -1,22 +1,9 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsOptional, Length } from 'class-validator';
-import { MemberAuthType, MemberStatus, MemberType } from '../../enums/member.enum';
-import { ObjectId } from 'bson';
+import { IsEnum, IsMongoId, IsOptional, Length } from 'class-validator';
+import { MemberStatus, MemberType } from '../../enums/member.enum';
 
 @InputType()
 export class MemberUpdate {
-	@IsOptional()
-	@Field(() => String, { nullable: true })
-	_id?: ObjectId;
-
-	@IsOptional()
-	@Field(() => MemberType, { nullable: true })
-	memberType?: MemberType;
-
-	@IsOptional()
-	@Field(() => MemberStatus, { nullable: true })
-	memberStatus?: MemberStatus;
-
 	@IsOptional()
 	@Field(() => String, { nullable: true })
 	memberPhone?: string;
@@ -46,7 +33,22 @@ export class MemberUpdate {
 
 	@IsOptional()
 	@Field(() => String, { nullable: true })
-	memberDecs?: string;
+	memberDesc?: string;
+}
 
-	deletedAt?: Date;
+@InputType()
+export class AdminMemberUpdate extends MemberUpdate {
+	@IsMongoId()
+	@Field(() => String)
+	_id!: string;
+
+	@IsOptional()
+	@IsEnum(MemberType)
+	@Field(() => MemberType, { nullable: true })
+	memberType?: MemberType;
+
+	@IsOptional()
+	@IsEnum(MemberStatus)
+	@Field(() => MemberStatus, { nullable: true })
+	memberStatus?: MemberStatus;
 }

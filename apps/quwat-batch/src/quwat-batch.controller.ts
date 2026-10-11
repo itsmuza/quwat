@@ -1,7 +1,7 @@
 import { Controller, Get, Logger } from '@nestjs/common';
 import { QuwatBatchService } from './quwat-batch.service';
-import { Cron, Interval, Timeout } from '@nestjs/schedule';
-import { BATCH_ROLLBACK, BATCH_TOP_AGENTS, BATCH_TOP_PROPERTIES } from './lib/config';
+import { Cron, Timeout } from '@nestjs/schedule';
+import { BATCH_ROLLBACK, BATCH_TOP_AGENTS, BATCH_TOP_PRODUCTS } from './lib/config';
 
 @Controller()
 export class QuwatBatchController {
@@ -35,12 +35,12 @@ export class QuwatBatchController {
 		}
 	}
 
-	@Cron('20 0 1 * * *', { name: BATCH_TOP_PROPERTIES })
-	async batchProperties() {
+	@Cron('20 0 1 * * *', { name: BATCH_TOP_PRODUCTS })
+	async batchProducts() {
 		try {
-			this.logger['context'] = BATCH_TOP_PROPERTIES;
+			this.logger['context'] = BATCH_TOP_PRODUCTS;
 			this.logger.debug('Executed');
-			await this.batchService.batchTopProperties();
+			await this.batchService.batchTopProducts();
 		} catch (err) {
 			this.logger.error(err);
 		}

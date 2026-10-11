@@ -14,7 +14,7 @@
 		"start:debug": "nest start --debug --watch",
 		"start:prod": "NODE_ENV=production node dist/apps/quwat/main",
 		"start:prod:batch": "node dist/apps/quwat-batch/main",
-		"lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+		"lint": "eslint \"apps/**/*.ts\"",
 		"test": "jest",
 		"test:watch": "jest --watch",
 		"test:cov": "jest --coverage",
@@ -81,7 +81,16 @@
 		"rootDir": ".",
 		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
-			"^.+\\.(t|j)s$": "ts-jest"
+			"^.+\\.(t|j)s$": [
+				"ts-jest",
+				{
+					"tsconfig": {
+						"module": "CommonJS",
+						"moduleResolution": "node",
+						"resolvePackageJsonExports": false
+					}
+				}
+			]
 		},
 		"collectCoverageFrom": [
 			"**/*.(t|j)s"
@@ -90,6 +99,9 @@
 		"testEnvironment": "node",
 		"roots": [
 			"<rootDir>/apps/"
-		]
+		],
+		"moduleNameMapper": {
+			"^apps/(.*)$": "<rootDir>/apps/$1"
+		}
 	}
 }

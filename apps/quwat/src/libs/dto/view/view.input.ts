@@ -1,5 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { isNotEmpty, IsNotEmpty } from 'class-validator';
+import { IsNotEmpty } from 'class-validator';
 import { ObjectId } from 'bson';
 import { ViewGroup } from '../../enums/view.enum';
 

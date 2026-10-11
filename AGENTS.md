@@ -1,153 +1,66 @@
-# QUWAT Backend Agent Instruction
+# QUWAT Backend Agent Instructions
 
-Quwat is a NestJS GraphQL monorepo migrated from Real estate platform into a platform that sells construction materials
+Quwat is a NestJS GraphQL/Mongoose monorepo for one construction-materials store, migrated from a real estate platform.
 
 ## Read First
 
-Before changing code, read the current AI handoff docs:
+Read `SKILLS.md` and the current AI handoff documents before development:
 
 - `docs/ai/BACKEND_MIGRATION.md`
-- `docs/ai/DECISION.md`
-- `docs/ai/COMPLETED_TASK.md`
+- `docs/ai/DECISIONS.md`
+- `docs/ai/COMPLETED_TASKS.md`
 - `docs/ai/NEXT_STEPS.md`
 
-Use those files as the source of truth for AI Agent related migration history, accept decisions, remaining work and validation status.
+These documents distinguish implemented behavior from future commerce requirements. Explicit user instructions take precedence.
 
 ## Project Shape
 
-- Backend apps are `quwat` and `quwat-batch`.
-- Keep the existing NestJS resolver/service/module pattern based on MVC and DI.
-- Keep DTOs, enums, schemas under `apps/quwat/src/libs
-- Keep shared modules reusable auth, member, like, view, comment and socket
+- Apps: `quwat` and `quwat-batch`.
+- Preserve the NestJS resolver/service/module pattern and dependency injection.
+- DTOs, enums, schemas and validators live under `apps/quwat/src/libs`.
+- Retain shared auth, member, like, view, comment and socket functionality.
 
 ## Domain Rules
 
-- Use Quwat/product terminology for the main catalog entity.
-- Do not reitroduce property or real-estate fields.
-- Keep `MemberType.CLIENT`, `MemberType.AGENT` and `MemberType.ADMIN` unchanged.
-- Product ownership continues to use `MemberType.AGENT` unless a later migration explicitly changes it.
-- Product enum values are:
-  - `ProductType`:
-    - `ASBOBLAR` — Asboblar
-    - `MAHKAMLASH_BUYUMLARI` — Mahkamlash buyumlari
-    - `SANTEXNIKA` — Santexnika
-    - `ELEKTR_MOLLARI` — Elektr mollari
-    - `BOYOQ_VA_YELIMLAR` — Bo‘yoq va yelimlar
-    - `ESHIK_JIHOZLARI` — Eshik jihozlari
-    - `XOJALIK_BUYUMLARI` — Xo‘jalik buyumlari
-  - `ProductSubtype`:
-    - `BOLGA`
-    - `BURAGICH`
-    - `OMBUR`
-    - `PARMA`
-    - `SILLIQLAGICH`
-    - `ARRA`
-    - `ELEKTR_ARRA`
-    - `GAYKA_KALITI`
-    - `SOZLANUVCHI_KALIT`
-    - `QUVUR_KALITI`
-    - `KALITLAR_TOPLAMI`
-    - `OLCHOV_LENTASI`
-    - `SATH_OLCHAGICH`
-    - `BURGI_UCHI`
-    - `KESISH_DISKI`
-    - `SILLIQLASH_DISKI`
-    - `ZIMPARA`
-    - `QISQICH`
-    - `PICHOQ`
-    - `MIX`
-    - `BURAMA_MIX`
-    - `BOLT`
-    - `GAYKA`
-    - `DYUBEL`
-    - `SHAYBA`
-    - `ANKER`
-    - `REZBALI_TAYOQ`
-    - `PARCHIN_MIX`
-    - `QUVUR`
-    - `QUVUR_BIRIKTIRGICH`
-    - `KRAN`
-    - `SHLANG`
-    - `QUVUR_TIRSAGI`
-    - `QUVUR_UCHLIGI`
-    - `QUVUR_TIQINI`
-    - `QUVUR_QISQICHI`
-    - `SUV_FILTRI`
-    - `SUV_HISOBLAGICH`
-    - `SIFON`
-    - `DUSH_KALLAGI`
-    - `RAKOVINA`
-    - `UNITAZ`
-    - `MUHRLASH_LENTASI`
-    - `KABEL`
-    - `ROZETKA`
-    - `ELEKTR_KALITI`
-    - `LAMPOCHKA`
-    - `UZAYTIRGICH`
-    - `VILKA`
-    - `AVTOMAT_UZGICH`
-    - `ELEKTR_HISOBLAGICH`
-    - `TAQSIMLASH_QUTISI`
-    - `KABEL_KANALI`
-    - `IZOLYATSIYA_LENTASI`
-    - `KABEL_BOGICHI`
-    - `FONAR`
-    - `BATAREYA`
-    - `BOYOQ`
-    - `ASTAR`
-    - `YELIM`
-    - `GERMETIK`
-    - `CHOTKA`
-    - `VALIK`
-    - `LAK`
-    - `ERITUVCHI`
-    - `MONTAJ_KOPIGI`
-    - `YOPISHQOQ_LENTA`
-    - `NIQOBLASH_LENTASI`
-    - `SHPATEL`
-    - `QULF`
-    - `TUTQICH`
-    - `OSHIQ_MOSHIQ`
-    - `ESHIK_TIRGAGI`
-    - `ESHIK_YOPGICHI`
-    - `ESHIK_ZANJIRI`
-    - `TAMBA`
-    - `CHELAK`
-    - `TOGORA`
-    - `SUPURGI`
-    - `POL_ARTGICH`
-    - `ARQON`
-    - `LATTA`
-    - `GUBKA`
-    - `CHIQINDI_QOPI`
-    - `SOVUN`
-    - `YUVISH_VOSITASI`
-    - `QOLQOP`
-    - `HIMOYA_KOZOYNAGI`
-    - `NIQOB`
-    - `BELKURAK`
-    - `KETMON`
-    - `XASKASH`
-    - `NARVON`
-    - `SUGORISH_PURKAGICHI`
-    - `GUL_TUVAGI`
+- Catalog entity: Product, MongoDB collection: `products`. Do not restore housing fields or compatibility aliases.
+- Member types: `CLIENT`, `ADMIN`, `AGENT`. Public signup always creates CLIENT; role/status management is admin-only.
+- Only active ADMIN members create, edit, archive or restore products. Agents do not own or manage products.
+- The store has one admin; Product has no member attribution fields. Keep ADMIN authorization for all catalog writes.
+- Product names are free text and unique across all statuses after trimming (case-sensitive). Use `_id` for references; no SKU or subtype field/enum.
+- Product types:
+  - `ASBOBLAR` — Asboblar
+  - `MAHKAMLASH_BUYUMLARI` — Mahkamlash buyumlari
+  - `SANTEXNIKA` — Santexnika
+  - `ELEKTR_MOLLARI` — Elektr mollari
+  - `BOYOQ_VA_YELIMLAR` — Bo‘yoq va yelimlar
+  - `ESHIK_JIHOZLARI` — Eshik jihozlari
+  - `XOJALIK_BUYUMLARI` — Xo‘jalik buyumlari
+- Product statuses: DRAFT, ACTIVE, ARCHIVED; default DRAFT. Removal archives rather than physically deleting.
+- Sale units: DONA (dona), QOP (qop), METR (metr), KG (kilogramm). Whole DONA/QOP; metric units allow up to three decimals.
+- Price is integer UZS so‘m, validated by WholeSom, not GraphQL Int. Stock quantities start at zero and are excluded from catalog inputs.
+- No Board/Follow features or product ownership counters. Retain member/product social interactions with discriminator-aware references.
+- Future commerce: agents confirm payments, PENDING → COMPLETED. Payment completion is independent of fulfillment and full debt settlement.
+- Orders, payments, stock receipts, debt and delivery services are not implemented in the catalog milestone. Do not silently broaden agent permissions when adding them.
 
 ## Workflow
 
-1. Analyze before editing.
-2. Keep chagnes small and consistent with existing project patterns.
-3. Do not remove working logic unless it is replaced safely.
+1. Inspect current code and working tree before editing; preserve user changes.
+2. Keep changes consistent with existing project patterns.
+3. Replace related references together, including social modules and batch ranking.
 4. Update `docs/ai/COMPLETED_TASKS.md` after major completed work.
-5. Add or update focused tests when bahavior changes.
+5. Add focused behavioral tests for changed permissions, validation and data flow.
+6. Never connect tests to deployment databases or change environment URI values without an explicit deployment task.
 
 ## Validation
 
-Use these checks for backend work:
-
 ```bash
-npx tsc -p apps/quwat/tsconfig.app.json --noEmit
-npx tsc -p apps/quwat-batch/tsconfig.app.json --noEmit
-npx run build
+npx tsc --noEmit --incremental false -p apps/quwat/tsconfig.app.json
+npx tsc --noEmit --incremental false -p apps/quwat-batch/tsconfig.app.json
+npm test -- --runInBand
+npm run lint
+npm run build -- quwat
+npm run build -- quwat-batch
+git diff --check
 ```
 
-`npm run lint` runs ESLint with `--fix`, so use it only when file rewriting is acceptable!
+Build sequentially because Nest uses a shared output directory. `npm run lint` does not rewrite files.

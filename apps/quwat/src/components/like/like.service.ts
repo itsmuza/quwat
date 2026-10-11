@@ -1,81 +1,57 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { ObjectId } from 'bson';
 import { Like, MeLiked } from '../../libs/dto/like/like';
 import { LikeInput } from '../../libs/dto/like/like.input';
-import { T } from '../../libs/types/common';
-import { Message } from '../../libs/enums/common.enum';
-import { OrdinaryInquiry } from '../../libs/dto/property/property.input';
-import { Properties } from '../../libs/dto/property/property';
+import { OrdinaryInquiry } from '../../libs/dto/product/product.input';
+import { Products } from '../../libs/dto/product/product';
 import { LikeGroup } from '../../libs/enums/like.enum';
-import { ObjectId } from 'bson';
-import { lookupFavorite } from '../../libs/config';
+import { ProductStatus } from '../../libs/enums/product.enum';
+import { lookupAuthMemberLiked } from '../../libs/config';
 
 @Injectable()
 export class LikeService {
 	constructor(@InjectModel('Like') private readonly likeModel: Model<Like>) {}
-
 	async toggleLike(input: LikeInput): Promise<number> {
-		const search: T = { memberId: input.memberId, likeRefId: input.likeRefId };
-		const exist = await this.likeModel.findOne(search).exec();
-
-		let modifier = 1;
-
-		if (exist) {
-			await this.likeModel.findOneAndDelete(search).exec();
-			modifier = -1;
-		} else {
-			try {
-				await this.likeModel.create(input);
-			} catch (err) {
-				console.log('Error, Like.model:', err);
-				throw new BadRequestException(Message.CREATE_FAILED);
-			}
+		const search = { memberId: input.memberId, likeRefId: input.likeRefId, likeGroup: input.likeGroup };
+		const removed = await this.likeModel.findOneAndDelete(search).exec();
+		if (removed) return -1;
+		try {
+			await this.likeModel.create(search);
+			return 1;
+		} catch (error) {
+			if (error?.code === 11000) return 0; // A concurrent toggle already inserted this like.
+			throw error;
 		}
-
-		console.log('- Like Modifier ' + modifier + ' -');
-		return modifier;
 	}
-
 	async checkLikeExistence(input: LikeInput): Promise<MeLiked[]> {
-		const { memberId, likeRefId } = input;
-		const result = await this.likeModel.findOne({ memberId: memberId, likeRefId: likeRefId }).exec();
-		return result ? [{ memberId: memberId, likeRefId: likeRefId, myFavorite: true }] : [];
+		const result = await this.likeModel
+			.findOne({ memberId: input.memberId, likeRefId: input.likeRefId, likeGroup: input.likeGroup })
+			.exec();
+		return result ? [{ memberId: input.memberId, likeRefId: input.likeRefId, myFavorite: true }] : [];
 	}
-
-	public async getFavoriteProperties(memberId: ObjectId, input: OrdinaryInquiry): Promise<Properties> {
-		const { page, limit } = input;
-		const match: T = { likeGroup: LikeGroup.PROPERTY, memberId: memberId };
-
-		const data: T = await this.likeModel
-			.aggregate([
-				{ $match: match },
-				{ $sort: { updatedAt: -1 } },
-				{
-					$lookup: {
-						from: 'properties',
-						localField: 'likeRefId',
-						foreignField: '_id',
-						as: 'favoriteProperty',
-					},
-				},
-				{ $unwind: '$favoriteProperty' },
+	async getFavoriteProducts(memberId: ObjectId, { page, limit }: OrdinaryInquiry): Promise<Products> {
+		const data = await this.likeModel
+			.aggregate<Products>([
+				{ $match: { memberId, likeGroup: LikeGroup.PRODUCT } },
+				{ $sort: { updatedAt: -1, _id: -1 } },
+				{ $lookup: { from: 'products', localField: 'likeRefId', foreignField: '_id', as: 'product' } },
+				{ $unwind: '$product' },
+				{ $match: { 'product.productStatus': ProductStatus.ACTIVE } },
+				{ $replaceRoot: { newRoot: '$product' } },
 				{
 					$facet: {
 						list: [
 							{ $skip: (page - 1) * limit },
 							{ $limit: limit },
-							lookupFavorite,
-							{ $unwind: '$favoriteProperty.memberData' },
+							lookupAuthMemberLiked(memberId, LikeGroup.PRODUCT),
 						],
 						metaCounter: [{ $count: 'total' }],
 					},
 				},
 			])
 			.exec();
-
-		const result: Properties = { list: [], metaCounter: data[0].metaCounter };
-		result.list = data[0].list.map((ele) => ele.favoriteProperty);
-		return result;
+		return data[0] ?? { list: [], metaCounter: [] };
 	}
 }

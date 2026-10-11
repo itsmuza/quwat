@@ -31,7 +31,7 @@ export class SocketGateway implements OnGatewayInit {
 	@WebSocketServer()
 	server!: Server;
 
-	afterInit(server: Server) {
+	afterInit(_server: Server) {
 		this.logger.verbose(`WebSocket Server Initialized total: [${this.summaryClient}]`);
 	}
 
@@ -39,7 +39,6 @@ export class SocketGateway implements OnGatewayInit {
 		try {
 			const parseUrl = url.parse(req.url, true);
 			const { token } = parseUrl.query;
-			console.log('token:', token);
 			return await this.authService.verifyToken(token as string);
 		} catch (err) {
 			return null;
