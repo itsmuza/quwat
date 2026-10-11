@@ -26,7 +26,7 @@ Separate the login/tooling cleanup from the larger breaking domain migration so 
 
 | Priority | Task                                                                            | Completion criterion                                                                                                  |
 | -------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| P0       | Locate the actual Next.js repository and resolve Quwat/Petoria naming           | Actual router, routes, package manager, API client, codegen and naming decision documented                            |
+| P0       | Locate the actual Next.js repository and resolve Quwat/Quwat naming           | Actual router, routes, package manager, API client, codegen and naming decision documented                            |
 | P1       | Apply branding-only frontend changes against today's backend                    | Branding updated; current Property operations and USER enum remain compatible                                         |
 | P1       | Review the future Product schema with backend work                              | Operation names, argument names, selected fields and role guards agreed; no speculative generated types               |
 | P2       | Replace property catalog/detail/forms and housing filters                       | Product fields and four units render correctly; integer-so‘m prices throughout                                        |
@@ -51,7 +51,7 @@ Do not interpret the current blocked lint run or undiscovered unit tests as pass
 
 ## Documentation
 
-1. **P0:** Confirm whether Petoria is an intentional frontend name or a typo; update the naming note consistently.
+1. **P0:** Confirm whether Quwat is an intentional frontend name or a typo; update the naming note consistently.
 2. **P1:** Promote only implemented work into [COMPLETED_TASKS.md](COMPLETED_TASKS.md), recording commands, outcomes and limitations.
 3. **P1:** Add final API/model contracts and actual frontend path mappings after code inspection.
 4. **P2:** Document new-database setup, SKU/quantity rules, stock intake, offline receipt/debt behavior and rollout/rollback constraints.

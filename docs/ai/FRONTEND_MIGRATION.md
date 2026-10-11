@@ -4,16 +4,16 @@ Snapshot: **2026-10-11**, Asia/Seoul. This is a plan, not an implemented fronten
 
 ## Naming and repository boundary
 
-The documentation request says **“map old Nestar frontend pages/components to Petoria pages/components.”** Earlier session decisions and the implemented backend rename consistently use **Quwat**. Petoria has not been established as an application or commerce domain in this session.
+The documentation request says **“map old Nestar frontend pages/components to Quwat pages/components.”** Earlier session decisions and the implemented backend rename consistently use **Quwat**. Quwat has not been established as an application or commerce domain in this session.
 
-**Working assumption:** Petoria is a naming typo for Quwat. The table labels below retain “Quwat/Petoria target” to make the discrepancy explicit. Confirm the name before changing frontend branding; do not rename the backend to Petoria or introduce pet-related features based on that word.
+**Working assumption:** Quwat is a naming typo for Quwat. The table labels below retain “Quwat/Quwat target” to make the discrepancy explicit. Confirm the name before changing frontend branding; do not rename the backend to Quwat or introduce pet-related features based on that word.
 
 No Next.js source, `.tsx` files or Next.js configuration was found in this backend repository. All old route/component labels below are **representative Nestar concepts**, not verified frontend filenames. Target routes/components are proposed. Router version, actual layout, GraphQL client, code generation, localization and test tooling must be inspected in the frontend repository first.
 
 ## Step-by-step migration
 
 1. **Discover and baseline:** locate the frontend repository; read its instructions; inventory pages/routes, Property/Board/Follow components, GraphQL documents, generated types, auth storage, role guards, branding and build configuration. Run its existing checks and record failures.
-2. **Confirm branding:** resolve Quwat/Petoria. Update titles, logos already supplied by the project, metadata, navigation, package/app names and environment display labels. Do not replace a database/API hostname or secret by text substitution.
+2. **Confirm branding:** resolve Quwat/Quwat. Update titles, logos already supplied by the project, metadata, navigation, package/app names and environment display labels. Do not replace a database/API hostname or secret by text substitution.
 3. **Keep the branding release compatible:** today's backend still exposes Property, USER, Board and Follow. Do not send Product operations or CLIENT values until that backend contract ships. New commerce screens are not functional against today's schema.
 4. **Agree the domain contract:** review Product fields, units, quantity validation, whole-so‘m transport/rounding, customer permissions, stock receipt and order/payment/debt/delivery schemas with the backend implementer. Define final operation names and arguments before generating types.
 5. **Replace real-estate catalog UI:** implement product cards/detail/forms and category/brand/price/availability filters. Remove beds, rooms, house type, property area, rent, barter, construction date and Korean property-location filters. Delivery address is a new field, not a reused property-location enum.
@@ -25,9 +25,9 @@ No Next.js source, `.tsx` files or Next.js configuration was found in this backe
 
 ## Proposed page/component mapping
 
-Every source label is conceptual until frontend inspection. These mappings describe the Quwat construction-materials target even if Petoria is later confirmed as its frontend display name.
+Every source label is conceptual until frontend inspection. These mappings describe the Quwat construction-materials target even if Quwat is later confirmed as its frontend display name.
 
-| Nestar page/component concept | Proposed Quwat/Petoria target | Change |
+| Nestar page/component concept | Proposed Quwat/Quwat target | Change |
 | --- | --- | --- |
 | Home / featured properties | `/` / ProductShowcase | Material categories, featured products, store information |
 | Property list / PropertyCard | `/products` / ProductCard | SKU/unit/whole-so‘m price/availability; no housing badges |
@@ -79,7 +79,7 @@ Do not change response envelope/nullability assumptions merely by replacing oper
 
 | Previous/requested term | Target label or behavior |
 | --- | --- |
-| Nestar | Quwat; Petoria naming confirmation pending |
+| Nestar | Quwat; Quwat naming confirmation pending |
 | Property / listing | Mahsulot / tovar (Product) |
 | User / USER | Mijoz / CLIENT |
 | Agent | Sotuvchi / do‘kon xodimi (AGENT) |

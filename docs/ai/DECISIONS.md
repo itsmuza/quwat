@@ -56,7 +56,7 @@ The current safe rename preserves those legacy modules/APIs **temporarily**. Tha
 
 ## Open decisions and implementation checks
 
-- Frontend naming: the latest documentation request mentions **Petoria**, while all preceding project decisions use **Quwat**. See the explicit naming note in [FRONTEND_MIGRATION.md](FRONTEND_MIGRATION.md); do not infer a pet-commerce domain.
+- Frontend naming: the latest documentation request mentions **Quwat**, while all preceding project decisions use **Quwat**. See the explicit naming note in [FRONTEND_MIGRATION.md](FRONTEND_MIGRATION.md); do not infer a pet-commerce domain.
 - No Next.js source is present here. Locate its repository and confirm actual routes/router version, components, GraphQL client, codegen and auth storage before implementation.
 - Choose money/quantity transport types and maximum values before schema generation; integer currency does not by itself define the wire representation.
 - Finalize agent order assignment/conflict handling, debt approval data, payment-entry corrections, SKU immutability and product-unit changes once stock/history exist.

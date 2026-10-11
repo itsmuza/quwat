@@ -48,7 +48,7 @@ USER, Board and Follow; do not assume the planned Product/CLIENT migration has s
 Distinguish implemented work, explicit requirements, planning defaults and open decisions.
 Preserve existing user changes and do not emit secrets or mutate a live database.
 Summarize current state, then carry out only the specific task requested in this session.
-Resolve the Petoria frontend naming discrepancy before rebranding another repository.
+Resolve the Quwat frontend naming discrepancy before rebranding another repository.
 ```
 
 ## Targeted login fix prompt
@@ -115,7 +115,7 @@ Test ownership, rounding, partial payments, overpayment, races and transaction r
 
 ```text
 Inspect the actual Next.js frontend repository; do not invent existing routes/components.
-Read docs/FRONTEND_MIGRATION.md. Confirm whether Petoria is a typo for Quwat or an intentional
+Read docs/FRONTEND_MIGRATION.md. Confirm whether Quwat is a typo for Quwat or an intentional
 frontend brand. Inventory router version, GraphQL client/operations, codegen, auth and tests.
 Separate branding-only work compatible with today's Property API from the future Product/
 CLIENT cutover. Map verified old files to new product/catalog/client/agent/admin screens.
