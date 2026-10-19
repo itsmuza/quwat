@@ -21,13 +21,12 @@ export class CommentService {
 	) {}
 
 	public async createComment(memberId: ObjectId, input: CommentInput): Promise<Comment> {
-		input.memberId = memberId;
 		input.commentRefId = shapeIntoMongoObject(input.commentRefId);
 		if (input.commentGroup === CommentGroup.PRODUCT) await this.productService.requireActiveProduct(input.commentRefId);
 
 		let result: Comment | null = null;
 		try {
-			result = await this.commentModel.create(input);
+			result = await this.commentModel.create({ ...input, memberId });
 		} catch (err) {
 			console.log('Error, Service.model:', err);
 			throw new BadRequestException(Message.CREATE_FAILED);

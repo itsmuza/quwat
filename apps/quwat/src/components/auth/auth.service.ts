@@ -22,6 +22,12 @@ export class AuthService {
 	async createToken(member: Member): Promise<string> {
 		return this.jwtService.signAsync({ _id: String(member._id) });
 	}
+	// AuthGuard supplies the current ACTIVE database member, never client claims/profile input.
+	async refreshSession(member: Member): Promise<Member> {
+		if (!member || member.memberStatus !== MemberStatus.ACTIVE) throw new UnauthorizedException('Not authenticated');
+		const { memberPassword: _password, ...profile } = member;
+		return { ...profile, guestLiked: false, accessToken: await this.createToken(member) };
+	}
 	async verifyToken(token: string): Promise<Member> {
 		try {
 			const payload = await this.jwtService.verifyAsync<{ _id: string }>(token);

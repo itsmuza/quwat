@@ -1,8 +1,14 @@
 import { Schema } from 'mongoose';
 import { MemberAuthType, MemberStatus, MemberType } from '../enums/member.enum';
+import { isAttendanceDate } from '../validation/attendance-date';
 
 const MemberSchema = new Schema(
 	{
+		attendanceStartDate: {
+			type: String,
+			default: null,
+			validate: (value: unknown) => value == null || isAttendanceDate(value),
+		},
 		memberType: {
 			type: String,
 			enum: MemberType,

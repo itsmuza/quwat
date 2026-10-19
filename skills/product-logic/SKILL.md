@@ -7,6 +7,7 @@ description: Review Quwat product API consistency across GraphQL operations, DTO
 
 - Verify product naming in createProduct, updateProduct, getProduct, getProducts and admin operations.
 - Verify favorites and visited return ACTIVE product data without owner lookups.
+- Verify saved products are client-only, independent of likes/cart, idempotent and private by member ID. Saved lists include ACTIVE/ARCHIVED, exclude DRAFT/missing cards before pagination/counting; meSaved is a computed current-client field.
 - Check DTO/schema agreement, nullability, unique trimmed names (all statuses), duplicate-name errors, WholeSom prices and unit-aware minimum/step validation.
 - Keep ProductUnit values DONA, QOP, METR, KG; DONA/QOP use whole quantities, METR/KG allow three decimals.
 - Check type/unit/brand/price/date/available-stock/name filters and pagination limits.

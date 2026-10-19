@@ -1,6 +1,6 @@
 # Quwat Session Prompts
 
-Updated: **2026-10-11**. Earlier discussions about subtype, SKU and agent catalog ownership are superseded by the latest approved milestone.
+Updated: **2026-10-13**. Earlier discussions about subtype, SKU and agent catalog ownership are superseded by the latest approved milestones.
 
 ## Accepted user requirements
 
@@ -10,13 +10,17 @@ Updated: **2026-10-11**. Earlier discussions about subtype, SKU and agent catalo
 - The store has one admin; products have no creator/updater member attribution.
 - Agents participate in sales by confirming payment; payment becomes COMPLETED.
 - Product catalog now; stock receipts, orders and payments in later milestones.
+- Saved products are active CLIENT-only and separate from likes/favorites/cart. Archived saved cards remain visible with productStatus; DRAFT/missing cards are hidden. Product.meSaved is computed, and saved operations do not affect stock or social counters.
+- Attendance uses Asia/Tashkent server dates: AGENT requests today/reads self, ADMIN reviews and reads all history/daily roster. ABSENT is computed for missing requests from the immutable first start date, never stored. Existing agents require separately executed setup; no final-decision reversal or rejected resubmission.
 
 ## Resume development
 
 ```text
-Read AGENTS.md, SKILLS.md and all six docs/ai files. Inspect git status and current
-source before edits. Auth/Product migration is implemented: ADMIN-only product writes,
+Read AGENTS.md, SKILLS.md and docs/ai files. Inspect git status and current
+source before edits. Auth/Product migration, Saved and Attendance APIs are implemented: ADMIN-only product writes,
 free productName, no SKU/subtype/ownership, CLIENT/ADMIN/AGENT, no Board/Follow.
+Keep saved products client-only and independent from likes/cart; see SAVED_PRODUCTS_API.md.
+Keep attendance date/authorization/ABSENT rules and do not run deployment setup during tests; see ATTENDANCE_API.md.
 Preserve user changes. Distinguish future commerce requirements from existing APIs.
 Run focused tests, both app typechecks, non-mutating lint and sequential builds.
 Update COMPLETED_TASKS.md with actual outcomes and limitations.
@@ -28,7 +32,7 @@ Update COMPLETED_TASKS.md with actual outcomes and limitations.
 Plan and implement the separately selected admin-only stock intake milestone.
 Use product _id. Existing 10 + incoming 100 must become 110; preserve reservations.
 Record quantity, time, product and admin with atomic/idempotent processing.
-Catalog inputs must remain unable to change stock. Confirm the transaction contract
+Catalog inputs already support ADMIN initial/manual total stock with optimistic concurrency and reservation protection. Keep additive receipts separate; confirm their transaction contract
 before adding commerce assumptions. No agent ownership, SKU or subtype.
 ```
 
@@ -49,5 +53,6 @@ rights for agents from old proposals.
 Locate the frontend repository, read its instructions and baseline checks, then adapt
 to the implemented backend contract in FRONTEND_MIGRATION.md. Regenerate GraphQL types,
 remove housing/Board/Follow/agent catalog management and keep product writes ADMIN-only.
+Saved APIs are callable; implement client bookmarks and archived-card labels using SAVED_PRODUCTS_API.md.
 Commerce APIs are not callable yet. Validate auth, WholeSom, ACTIVE visibility and role/stock protection.
 ```

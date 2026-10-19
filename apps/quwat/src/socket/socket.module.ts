@@ -5,5 +5,6 @@ import { AuthModule } from '../components/auth/auth.module';
 @Module({
 	imports: [AuthModule],
 	providers: [SocketGateway],
+	exports: [SocketGateway],
 })
 export class SocketModule {}

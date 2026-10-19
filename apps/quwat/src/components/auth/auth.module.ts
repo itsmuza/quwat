@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { AuthResolver } from './auth.resolver';
 import { HttpModule } from '@nestjs/axios';
 import { MongooseModule } from '@nestjs/mongoose';
 import MemberSchema from '../../libs/schemas/Member.model';
@@ -19,7 +20,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 			}),
 		}),
 	],
-	providers: [AuthService],
+	providers: [AuthService, AuthResolver],
 	exports: [AuthService],
 })
 export class AuthModule {}

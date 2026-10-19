@@ -12,8 +12,15 @@ import { ViewGroup } from '../../libs/enums/view.enum';
 import { WholeSom } from '../../libs/scalars/whole-som.scalar';
 import { Kind } from 'graphql';
 
-const query = (value: unknown): any => ({ lean: () => query(value), exec: jest.fn().mockResolvedValue(value) });
-const admin = { _id: new ObjectId(), memberType: MemberType.ADMIN, memberStatus: MemberStatus.ACTIVE } as any;
+const query = (value: unknown): any => ({
+	lean: () => query(value),
+	exec: jest.fn().mockResolvedValue(value),
+});
+const admin = {
+	_id: new ObjectId(),
+	memberType: MemberType.ADMIN,
+	memberStatus: MemberStatus.ACTIVE,
+} as any;
 const input = {
 	productName: '  Bolga  ',
 	productType: ProductType.ASBOBLAR,
@@ -53,7 +60,10 @@ describe('Admin product catalog', () => {
 			toggleLike: jest.fn().mockResolvedValue(1),
 			getFavoriteProducts: jest.fn(),
 		};
-		views = { recordView: jest.fn().mockResolvedValue(null), getVisitedProducts: jest.fn() };
+		views = {
+			recordView: jest.fn().mockResolvedValue(null),
+			getVisitedProducts: jest.fn(),
+		};
 		service = new ProductService(db, likes, views);
 	});
 	it.each([MemberType.CLIENT, MemberType.AGENT])('denies %s every product management operation', async (role) => {
@@ -63,9 +73,13 @@ describe('Admin product catalog', () => {
 			'Only active admins',
 		);
 		await expect(service.removeProductByAdmin(actor, new ObjectId())).rejects.toThrow('Only active admins');
-		await expect(service.getAllProductsByAdmin(actor, { page: 1, limit: 10, search: {} })).rejects.toThrow(
-			'Only active admins',
-		);
+		await expect(
+			service.getAllProductsByAdmin(actor, {
+				page: 1,
+				limit: 10,
+				search: {},
+			}),
+		).rejects.toThrow('Only active admins');
 		expect(db.create).not.toHaveBeenCalled();
 		expect(db.findOneAndUpdate).not.toHaveBeenCalled();
 	});
@@ -77,7 +91,10 @@ describe('Admin product catalog', () => {
 		}
 	});
 	it.each(Object.values(ProductUnit))('creates %s with zero stock, unit defaults, trimmed name', async (unit) => {
-		const product = await service.createProduct(admin, { ...input, productUnit: unit });
+		const product = await service.createProduct(admin, {
+			...input,
+			productUnit: unit,
+		});
 		const step = [ProductUnit.DONA, ProductUnit.QOP].includes(unit) ? 1 : 0.001;
 		expect(product).toMatchObject({
 			productName: 'Bolga',
@@ -90,17 +107,96 @@ describe('Admin product catalog', () => {
 		});
 		await expect(new Card(product).validate()).resolves.toBeUndefined();
 	});
-	it.each(['memberId', 'productQuantity', 'productReservedQuantity', 'productSubtype', 'productSku'])(
+	it.each(['memberId', 'productReservedQuantity', 'productSubtype', 'productSku'])(
 		'rejects forged %s on create and update',
 		async (key) => {
 			await expect(service.createProduct(admin, { ...input, [key]: 100 } as any)).rejects.toThrow(
 				'Invalid product input',
 			);
 			await expect(
-				service.updateProduct(admin, { _id: new ObjectId().toHexString(), [key]: 100 } as any),
+				service.updateProduct(admin, {
+					_id: new ObjectId().toHexString(),
+					[key]: 100,
+				} as any),
 			).rejects.toThrow('Invalid product input');
 		},
 	);
+	it.each([
+		[ProductUnit.DONA, 25],
+		[ProductUnit.QOP, 12],
+		[ProductUnit.METR, 10.125],
+		[ProductUnit.KG, 2.375],
+	])('creates %s with an admin-specified initial stock of %s', async (unit, quantity) => {
+		const product = await service.createProduct(admin, {
+			...input,
+			productUnit: unit as ProductUnit,
+			productQuantity: quantity as number,
+		});
+		expect(product.productQuantity).toBe(quantity);
+		expect(product.productReservedQuantity).toBe(0);
+		await expect(new Card(product).validate()).resolves.toBeUndefined();
+	});
+	it.each([-1, 1.5, 1.1234, Infinity, NaN, 1_000_000_001])(
+		'rejects invalid DONA stock %s before writing',
+		async (quantity) => {
+			await expect(service.createProduct(admin, { ...input, productQuantity: quantity })).rejects.toThrow();
+			expect(db.create).not.toHaveBeenCalled();
+		},
+	);
+	it('sets total stock, preserves reservations and compares the previous stock atomically', async () => {
+		const original = card({ productQuantity: 10, productReservedQuantity: 3 });
+		db.findById.mockReturnValue(query(original));
+		db.findOneAndUpdate.mockReturnValue(query({ ...original, productQuantity: 25 }));
+		await expect(
+			service.updateProduct(admin, {
+				_id: original._id.toHexString(),
+				productQuantity: 25,
+				expectedProductQuantity: 10,
+			}),
+		).resolves.toMatchObject({
+			productQuantity: 25,
+			productReservedQuantity: 3,
+		});
+		const [filter, update] = db.findOneAndUpdate.mock.calls[0];
+		expect(filter).toMatchObject({
+			productQuantity: 10,
+			productReservedQuantity: 3,
+		});
+		expect(update.$set.productQuantity).toBe(25);
+		expect(update.$set.productReservedQuantity).toBeUndefined();
+		expect(update.$set.expectedProductQuantity).toBeUndefined();
+	});
+	it.each([
+		{ productQuantity: 2, expectedProductQuantity: 10 },
+		{ productQuantity: 1.5, expectedProductQuantity: 10 },
+		{ productQuantity: 25, expectedProductQuantity: 0 },
+		{ productQuantity: 25 },
+	])('rejects below-reserved, fractional, stale or unguarded stock edits %j', async (change) => {
+		const original = card({
+			productQuantity: 10,
+			productReservedQuantity: 3,
+		});
+		db.findById.mockReturnValue(query(original));
+		await expect(
+			service.updateProduct(admin, {
+				_id: original._id.toHexString(),
+				...change,
+			}),
+		).rejects.toThrow();
+		expect(db.findOneAndUpdate).not.toHaveBeenCalled();
+	});
+	it('reports a concurrent stock or reservation change without overwriting it', async () => {
+		const original = card({ productQuantity: 10, productReservedQuantity: 3 });
+		db.findById.mockReturnValue(query(original));
+		db.findOneAndUpdate.mockReturnValue(query(null));
+		await expect(
+			service.updateProduct(admin, {
+				_id: original._id.toHexString(),
+				productQuantity: 25,
+				expectedProductQuantity: 10,
+			}),
+		).rejects.toThrow('changed concurrently');
+	});
 	it.each([
 		{ productName: '  a ' },
 		{ productName: 'x'.repeat(101) },
@@ -123,7 +219,10 @@ describe('Admin product catalog', () => {
 	});
 
 	it('reports a name conflict for duplicate creation after trimming', async () => {
-		db.create.mockRejectedValue({ code: 11000, keyPattern: { productName: 1 } });
+		db.create.mockRejectedValue({
+			code: 11000,
+			keyPattern: { productName: 1 },
+		});
 		await expect(service.createProduct(admin, input)).rejects.toMatchObject({
 			message: 'A product with this name already exists',
 			status: 409,
@@ -134,10 +233,18 @@ describe('Admin product catalog', () => {
 	it('reports a name conflict when renaming to another product name', async () => {
 		const original = card();
 		db.findById.mockReturnValue(query(original));
-		db.findOneAndUpdate.mockReturnValue({ exec: jest.fn().mockRejectedValue({ code: 11000 }) });
+		db.findOneAndUpdate.mockReturnValue({
+			exec: jest.fn().mockRejectedValue({ code: 11000 }),
+		});
 		await expect(
-			service.updateProduct(admin, { _id: original._id.toHexString(), productName: ' Parma ' }),
-		).rejects.toMatchObject({ message: 'A product with this name already exists', status: 409 });
+			service.updateProduct(admin, {
+				_id: original._id.toHexString(),
+				productName: ' Parma ',
+			}),
+		).rejects.toMatchObject({
+			message: 'A product with this name already exists',
+			status: 409,
+		});
 		expect(db.findOneAndUpdate.mock.calls[0][1].$set.productName).toBe('Parma');
 	});
 	it('allows keeping the same name on the same product', async () => {
@@ -145,7 +252,10 @@ describe('Admin product catalog', () => {
 		db.findById.mockReturnValue(query(original));
 		db.findOneAndUpdate.mockReturnValue(query(original));
 		await expect(
-			service.updateProduct(admin, { _id: original._id.toHexString(), productName: ' Bolga ' }),
+			service.updateProduct(admin, {
+				_id: original._id.toHexString(),
+				productName: ' Bolga ',
+			}),
 		).resolves.toBe(original);
 	});
 	it('blocks writes when existing duplicates prevent the index, then retries after cleanup', async () => {
@@ -155,7 +265,9 @@ describe('Admin product catalog', () => {
 			message: expect.stringContaining('Duplicate product names already exist in the database'),
 		});
 		expect(db.create).not.toHaveBeenCalled();
-		await expect(service.createProduct(admin, input)).resolves.toMatchObject({ productName: 'Bolga' });
+		await expect(service.createProduct(admin, input)).resolves.toMatchObject({
+			productName: 'Bolga',
+		});
 		expect(db.collection.createIndex).toHaveBeenCalledTimes(2);
 	});
 	it('awaits index readiness before creating a card', async () => {
@@ -180,7 +292,10 @@ describe('Admin product catalog', () => {
 		expect(results[0].status).toBe('fulfilled');
 		expect(results[1]).toMatchObject({
 			status: 'rejected',
-			reason: { message: 'A product with this name already exists', status: 409 },
+			reason: {
+				message: 'A product with this name already exists',
+				status: 409,
+			},
 		});
 		expect(db.collection.createIndex).toHaveBeenCalledTimes(1);
 	});
@@ -199,25 +314,39 @@ describe('Admin product catalog', () => {
 		const original = card();
 		db.findById.mockReturnValue(query(original));
 		db.findOneAndUpdate.mockReturnValue(query({ ...original, productName: 'Parma' }));
-		await service.updateProduct(admin, { _id: original._id.toHexString(), productName: ' Parma ' });
+		await service.updateProduct(admin, {
+			_id: original._id.toHexString(),
+			productName: ' Parma ',
+		});
 		const [filter, update] = db.findOneAndUpdate.mock.calls[0];
 		expect(filter.memberId).toBeUndefined();
 		expect(update.$set).toEqual({ productName: 'Parma', archivedAt: null });
 		expect(update.$set.productQuantity).toBeUndefined();
 	});
 	it('archives without deleting and preserves the original archive timestamp on repeated calls', async () => {
-		const original = card({ productStatus: ProductStatus.ARCHIVED, archivedAt: new Date('2026-10-01') });
+		const original = card({
+			productStatus: ProductStatus.ARCHIVED,
+			archivedAt: new Date('2026-10-01'),
+		});
 		db.findOneAndUpdate.mockReturnValue(query(null));
 		db.findById.mockReturnValue(query(original));
 		expect(await service.removeProductByAdmin(admin, original._id)).toBe(original);
-		expect(db.findOneAndUpdate.mock.calls[0][0]).toMatchObject({ productStatus: { $ne: ProductStatus.ARCHIVED } });
+		expect(db.findOneAndUpdate.mock.calls[0][0]).toMatchObject({
+			productStatus: { $ne: ProductStatus.ARCHIVED },
+		});
 		expect(original.archivedAt).toEqual(new Date('2026-10-01'));
 	});
 	it('clears archivedAt on restoring an archived product', async () => {
-		const original = card({ productStatus: ProductStatus.ARCHIVED, archivedAt: new Date() });
+		const original = card({
+			productStatus: ProductStatus.ARCHIVED,
+			archivedAt: new Date(),
+		});
 		db.findById.mockReturnValue(query(original));
 		db.findOneAndUpdate.mockReturnValue(query(original));
-		await service.updateProduct(admin, { _id: original._id.toHexString(), productStatus: ProductStatus.ACTIVE });
+		await service.updateProduct(admin, {
+			_id: original._id.toHexString(),
+			productStatus: ProductStatus.ACTIVE,
+		});
 		expect(db.findOneAndUpdate.mock.calls[0][1].$set.archivedAt).toBeNull();
 	});
 	it.each([{ productQuantity: 1 }, { productReservedQuantity: 1 }])(
@@ -226,7 +355,10 @@ describe('Admin product catalog', () => {
 			const original = card(extra);
 			db.findById.mockReturnValue(query(original));
 			await expect(
-				service.updateProduct(admin, { _id: original._id.toHexString(), productUnit: ProductUnit.KG }),
+				service.updateProduct(admin, {
+					_id: original._id.toHexString(),
+					productUnit: ProductUnit.KG,
+				}),
 			).rejects.toThrow('Unit cannot change');
 		},
 	);
@@ -235,11 +367,20 @@ describe('Admin product catalog', () => {
 		db.findById.mockReturnValue(query(original));
 		db.findOneAndUpdate.mockReturnValue(query(null));
 		await expect(
-			service.updateProduct(admin, { _id: original._id.toHexString(), productUnit: ProductUnit.KG }),
+			service.updateProduct(admin, {
+				_id: original._id.toHexString(),
+				productUnit: ProductUnit.KG,
+			}),
 		).rejects.toThrow('changed concurrently');
 		const [filter, update] = db.findOneAndUpdate.mock.calls[0];
-		expect(filter).toMatchObject({ productQuantity: 0, productReservedQuantity: 0 });
-		expect(update.$set).toMatchObject({ productMinOrderQuantity: 0.001, productQuantityStep: 0.001 });
+		expect(filter).toMatchObject({
+			productQuantity: 0,
+			productReservedQuantity: 0,
+		});
+		expect(update.$set).toMatchObject({
+			productMinOrderQuantity: 0.001,
+			productQuantityStep: 0.001,
+		});
 	});
 	it('requires minimum quantities to match the unit and quantity step', async () => {
 		await expect(service.createProduct(admin, { ...input, productQuantityStep: 0.5 })).rejects.toThrow(
@@ -268,7 +409,10 @@ describe('Admin product catalog', () => {
 		db.findByIdAndUpdate.mockReturnValue(query(original));
 		views.recordView.mockResolvedValue({});
 		await service.getProduct(admin._id, original._id);
-		expect(db.findOne).toHaveBeenCalledWith({ _id: original._id, productStatus: ProductStatus.ACTIVE });
+		expect(db.findOne).toHaveBeenCalledWith({
+			_id: original._id,
+			productStatus: ProductStatus.ACTIVE,
+		});
 		expect(views.recordView).toHaveBeenCalledWith({
 			memberId: admin._id,
 			viewRefId: original._id,
@@ -300,7 +444,9 @@ describe('Admin product catalog', () => {
 		expect(pipeline[0].$match).toMatchObject({
 			productStatus: ProductStatus.ACTIVE,
 			productName: { $regex: 'Parma\\.\\*', $options: 'i' },
-			$expr: { $gt: [{ $subtract: ['$productQuantity', '$productReservedQuantity'] }, 0] },
+			$expr: {
+				$gt: [{ $subtract: ['$productQuantity', '$productReservedQuantity'] }, 0],
+			},
 		});
 		expect(JSON.stringify(pipeline)).not.toContain('members');
 		expect(pipeline[1].$sort).toMatchObject({ createdAt: -1 });
@@ -319,7 +465,14 @@ describe('Admin product catalog', () => {
 			{ search: { productStatus: ProductStatus.ARCHIVED } },
 			{ search: { pricesRange: { start: 2, end: 1 } } },
 		]) {
-			await expect(service.getProducts(null, { page: 1, limit: 10, search: {}, ...bad } as any)).rejects.toThrow();
+			await expect(
+				service.getProducts(null, {
+					page: 1,
+					limit: 10,
+					search: {},
+					...bad,
+				} as any),
+			).rejects.toThrow();
 		}
 	});
 });
@@ -359,9 +512,11 @@ describe('Mongoose query middleware without a database server', () => {
 	it('validates a catalog update through the real query middleware and leaves stock intact', async () => {
 		const current = new Card(card()).toObject();
 		const read = jest.spyOn(Card.collection, 'findOne').mockResolvedValue(current as any);
-		const write = jest
-			.spyOn(Card.collection, 'findOneAndUpdate')
-			.mockResolvedValue({ ...current, productMinOrderQuantity: 2, productQuantityStep: 2 } as any);
+		const write = jest.spyOn(Card.collection, 'findOneAndUpdate').mockResolvedValue({
+			...current,
+			productMinOrderQuantity: 2,
+			productQuantityStep: 2,
+		} as any);
 		try {
 			const service = new ProductService(Card as any, {} as any, {} as any);
 			await expect(
@@ -370,7 +525,10 @@ describe('Mongoose query middleware without a database server', () => {
 					productMinOrderQuantity: 2,
 					productQuantityStep: 2,
 				}),
-			).resolves.toMatchObject({ productMinOrderQuantity: 2, productQuantityStep: 2 });
+			).resolves.toMatchObject({
+				productMinOrderQuantity: 2,
+				productQuantityStep: 2,
+			});
 			const persisted = write.mock.calls[0][1] as any;
 			expect(persisted.$set.productQuantity).toBeUndefined();
 		} finally {

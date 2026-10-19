@@ -76,7 +76,7 @@ describe('Authentication and role boundaries', () => {
 			memberType: MemberType.AGENT,
 		});
 		const [filter, update] = model.findOneAndUpdate.mock.calls[0];
-		expect(filter).toEqual({ _id: id.toHexString() });
+		expect(filter).toEqual({ _id: id.toHexString(), attendanceStartDate: null });
 		expect(update.$set.memberType).toBe(MemberType.AGENT);
 		expect(await auth.comparePassword('newpass123', update.$set.memberPassword)).toBe(true);
 	});

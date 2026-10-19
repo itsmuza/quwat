@@ -27,7 +27,12 @@ import { LikeGroup } from '../../libs/enums/like.enum';
 import { ViewGroup } from '../../libs/enums/view.enum';
 import { StatisticModifier } from '../../libs/types/common';
 import { lookupAuthMemberLiked } from '../../libs/config';
-import { defaultQuantityStep, validQuantityRules } from '../../libs/validation/product-quantity';
+import {
+	defaultQuantityStep,
+	isQuantity,
+	isWholeUnit,
+	validQuantityRules,
+} from '../../libs/validation/product-quantity';
 import { LikeService } from '../like/like.service';
 import { ViewService } from '../view/view.service';
 
@@ -40,6 +45,7 @@ const editableFields = [
 	'productBrand',
 	'productDesc',
 	'productImages',
+	'productQuantity',
 	'productMinOrderQuantity',
 	'productQuantityStep',
 ] as const;
@@ -71,6 +77,11 @@ export class ProductService {
 		if (!validQuantityRules(data.productUnit, data.productMinOrderQuantity!, data.productQuantityStep!))
 			throw new BadRequestException('Invalid minimum quantity or quantity step for unit');
 	}
+	private validateStock(unit: ProductInput['productUnit'], quantity: number, reserved: number): void {
+		if (!isQuantity(quantity) || (isWholeUnit(unit) && !Number.isInteger(quantity)))
+			throw new BadRequestException('Invalid stock quantity for unit');
+		if (quantity < reserved) throw new BadRequestException('Stock quantity cannot be below reserved quantity');
+	}
 	private async ensureUniqueNameIndex(): Promise<void> {
 		try {
 			// Await the unique index before saving names, including when automatic indexing is disabled.
@@ -95,14 +106,16 @@ export class ProductService {
 		const data = this.changes(checked(ProductInput, input));
 		data.productStatus ??= ProductStatus.DRAFT;
 		data.productImages ??= [];
+		data.productQuantity ??= 0;
 		data.productMinOrderQuantity ??= defaultQuantityStep(data.productUnit);
 		data.productQuantityStep ??= defaultQuantityStep(data.productUnit);
 		this.validateRules(data as ProductInput);
+		this.validateStock(data.productUnit, data.productQuantity, 0);
 		await this.ensureUniqueNameIndex();
 		try {
 			return await this.productModel.create({
 				...data,
-				productQuantity: 0,
+				productQuantity: data.productQuantity,
 				productReservedQuantity: 0,
 				archivedAt: data.productStatus === ProductStatus.ARCHIVED ? new Date() : null,
 			});
@@ -115,6 +128,11 @@ export class ProductService {
 		const dto = checked(ProductUpdate, input);
 		const current = await this.productModel.findById(dto._id).lean().exec();
 		if (!current) throw new NotFoundException('Product not found');
+		if (dto.productQuantity !== undefined) {
+			if (dto.expectedProductQuantity == null) throw new BadRequestException('Stock update requires expected quantity');
+			if (dto.expectedProductQuantity !== current.productQuantity)
+				throw new BadRequestException('Product changed concurrently; reload and retry');
+		}
 		const data = this.changes(dto as ProductInput);
 		if (data.productUnit && data.productUnit !== current.productUnit) {
 			if (current.productQuantity !== 0 || current.productReservedQuantity !== 0)
@@ -128,6 +146,7 @@ export class ProductService {
 		) as unknown as ProductInput;
 		checked(ProductInput, card);
 		this.validateRules(card);
+		this.validateStock(card.productUnit, card.productQuantity!, current.productReservedQuantity);
 		const status = data.productStatus ?? current.productStatus;
 		data.archivedAt = status === ProductStatus.ARCHIVED ? (current.archivedAt ?? new Date()) : null;
 		if (data.productName !== undefined) await this.ensureUniqueNameIndex();
@@ -159,7 +178,12 @@ export class ProductService {
 		const result = await this.productModel
 			.findOneAndUpdate(
 				{ _id: productId, productStatus: { $ne: ProductStatus.ARCHIVED } },
-				{ $set: { productStatus: ProductStatus.ARCHIVED, archivedAt: new Date() } },
+				{
+					$set: {
+						productStatus: ProductStatus.ARCHIVED,
+						archivedAt: new Date(),
+					},
+				},
 				{ new: true, runValidators: true },
 			)
 			.exec();
@@ -185,7 +209,11 @@ export class ProductService {
 				viewGroup: ViewGroup.PRODUCT,
 			});
 			if (recorded) {
-				await this.productStatsEditor({ _id: productId, targetKey: 'productViews', modifier: 1 });
+				await this.productStatsEditor({
+					_id: productId,
+					targetKey: 'productViews',
+					modifier: 1,
+				});
 				product.productViews++;
 			}
 			product.meLiked = await this.likeService.checkLikeExistence({
@@ -215,7 +243,10 @@ export class ProductService {
 			if (Object.keys(bounds).length) match[field] = bounds;
 		}
 		if (search.text)
-			match.productName = { $regex: search.text.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+			match.productName = {
+				$regex: search.text.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+				$options: 'i',
+			};
 		if (search.inStock != null)
 			match.$expr = {
 				[search.inStock ? '$gt' : '$lte']: [{ $subtract: ['$productQuantity', '$productReservedQuantity'] }, 0],
@@ -230,7 +261,12 @@ export class ProductService {
 		const result = await this.productModel
 			.aggregate<Products>([
 				{ $match: match },
-				{ $sort: { [input.sort ?? 'createdAt']: input.direction ?? Direction.DESC, _id: -1 } },
+				{
+					$sort: {
+						[input.sort ?? 'createdAt']: input.direction ?? Direction.DESC,
+						_id: -1,
+					},
+				},
 				{
 					$facet: {
 						list: [
@@ -247,7 +283,10 @@ export class ProductService {
 	}
 	async getProducts(memberId: ObjectId | null, input: ProductsInquiry): Promise<Products> {
 		const dto = checked(ProductsInquiry, input);
-		return this.list(memberId, dto, { ...this.match(dto.search), productStatus: ProductStatus.ACTIVE });
+		return this.list(memberId, dto, {
+			...this.match(dto.search),
+			productStatus: ProductStatus.ACTIVE,
+		});
 	}
 	async getAllProductsByAdmin(admin: Member, input: AllProductsInquiry): Promise<Products> {
 		this.assertAdmin(admin);
@@ -269,7 +308,11 @@ export class ProductService {
 			likeRefId: productId,
 			likeGroup: LikeGroup.PRODUCT,
 		});
-		const product = await this.productStatsEditor({ _id: productId, targetKey: 'productLikes', modifier });
+		const product = await this.productStatsEditor({
+			_id: productId,
+			targetKey: 'productLikes',
+			modifier,
+		});
 		product.meLiked = await this.likeService.checkLikeExistence({
 			memberId,
 			likeRefId: productId,

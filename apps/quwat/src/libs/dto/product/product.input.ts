@@ -32,20 +32,36 @@ export class ProductInput {
 	@Field(() => String)
 	productName!: string;
 	@IsEnum(ProductType) @Field(() => ProductType) productType!: ProductType;
-	@IsOptional() @IsEnum(ProductStatus) @Field(() => ProductStatus, { nullable: true }) productStatus?: ProductStatus;
+	@IsOptional()
+	@IsEnum(ProductStatus)
+	@Field(() => ProductStatus, { nullable: true })
+	productStatus?: ProductStatus;
 	@IsEnum(ProductUnit) @Field(() => ProductUnit) productUnit!: ProductUnit;
-	@IsInt() @Min(0) @Max(Number.MAX_SAFE_INTEGER) @Field(() => WholeSom) productPrice!: number;
+	@IsInt()
+	@Min(0)
+	@Max(Number.MAX_SAFE_INTEGER)
+	@Field(() => WholeSom)
+	productPrice!: number;
 	@IsOptional()
 	@IsString()
 	@Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
 	@Field(() => String, { nullable: true })
 	productBrand?: string;
-	@IsOptional() @IsString() @Field(() => String, { nullable: true }) productDesc?: string;
+	@IsOptional()
+	@IsString()
+	@Field(() => String, { nullable: true })
+	productDesc?: string;
 	@IsOptional()
 	@IsArray()
 	@IsString({ each: true })
 	@Field(() => [String], { nullable: true })
 	productImages?: string[];
+	@IsOptional()
+	@IsNumber({ maxDecimalPlaces: 3, allowNaN: false, allowInfinity: false })
+	@Min(0)
+	@Max(MAX_QUANTITY)
+	@Field(() => Float, { nullable: true })
+	productQuantity?: number;
 	@IsOptional()
 	@IsNumber({ maxDecimalPlaces: 3, allowNaN: false, allowInfinity: false })
 	@Min(0.001)
@@ -62,6 +78,12 @@ export class ProductInput {
 @InputType()
 export class ProductUpdate extends PartialType(ProductInput) {
 	@IsMongoId() @Field(() => String) _id!: string;
+	@IsOptional()
+	@IsNumber({ maxDecimalPlaces: 3, allowNaN: false, allowInfinity: false })
+	@Min(0)
+	@Max(MAX_QUANTITY)
+	@Field(() => Float, { nullable: true })
+	expectedProductQuantity?: number;
 }
 @InputType()
 export class OrdinaryInquiry {
@@ -76,7 +98,12 @@ export class PricesRange {
 	@Max(Number.MAX_SAFE_INTEGER)
 	@Field(() => WholeSom, { nullable: true })
 	start?: number;
-	@IsOptional() @IsInt() @Min(0) @Max(Number.MAX_SAFE_INTEGER) @Field(() => WholeSom, { nullable: true }) end?: number;
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	@Max(Number.MAX_SAFE_INTEGER)
+	@Field(() => WholeSom, { nullable: true })
+	end?: number;
 }
 @InputType()
 export class PeriodsRange {
@@ -113,23 +140,49 @@ export class ProductSearch {
 	@Type(() => PeriodsRange)
 	@Field(() => PeriodsRange, { nullable: true })
 	periodsRange?: PeriodsRange;
-	@IsOptional() @IsBoolean() @Field(() => Boolean, { nullable: true }) inStock?: boolean;
-	@IsOptional() @IsString() @Length(1, 100) @Field(() => String, { nullable: true }) text?: string;
+	@IsOptional()
+	@IsBoolean()
+	@Field(() => Boolean, { nullable: true })
+	inStock?: boolean;
+	@IsOptional()
+	@IsString()
+	@Length(1, 100)
+	@Field(() => String, { nullable: true })
+	text?: string;
 }
 @InputType()
 export class AdminProductSearch extends ProductSearch {
-	@IsOptional() @IsEnum(ProductStatus) @Field(() => ProductStatus, { nullable: true }) productStatus?: ProductStatus;
+	@IsOptional()
+	@IsEnum(ProductStatus)
+	@Field(() => ProductStatus, { nullable: true })
+	productStatus?: ProductStatus;
 }
 @InputType()
 export class ProductsInquiry extends OrdinaryInquiry {
-	@IsOptional() @IsIn(availableProductSorts) @Field(() => String, { nullable: true }) sort?: string;
-	@IsOptional() @IsEnum(Direction) @Field(() => Direction, { nullable: true }) direction?: Direction;
-	@IsDefined() @ValidateNested() @Type(() => ProductSearch) @Field(() => ProductSearch) search!: ProductSearch;
+	@IsOptional()
+	@IsIn(availableProductSorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
+	@IsOptional()
+	@IsEnum(Direction)
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
+	@IsDefined()
+	@ValidateNested()
+	@Type(() => ProductSearch)
+	@Field(() => ProductSearch)
+	search!: ProductSearch;
 }
 @InputType()
 export class AllProductsInquiry extends OrdinaryInquiry {
-	@IsOptional() @IsIn(availableProductSorts) @Field(() => String, { nullable: true }) sort?: string;
-	@IsOptional() @IsEnum(Direction) @Field(() => Direction, { nullable: true }) direction?: Direction;
+	@IsOptional()
+	@IsIn(availableProductSorts)
+	@Field(() => String, { nullable: true })
+	sort?: string;
+	@IsOptional()
+	@IsEnum(Direction)
+	@Field(() => Direction, { nullable: true })
+	direction?: Direction;
 	@IsDefined()
 	@ValidateNested()
 	@Type(() => AdminProductSearch)

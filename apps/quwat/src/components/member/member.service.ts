@@ -14,7 +14,8 @@ import { ViewGroup } from '../../libs/enums/view.enum';
 import { LikeInput } from '../../libs/dto/like/like.input';
 import { LikeGroup } from '../../libs/enums/like.enum';
 import { LikeService } from '../like/like.service';
-import { lookupAuthMemberLiked } from '../../libs/config';
+import { lookupAuthMemberLiked, shapeIntoMongoObject } from '../../libs/config';
+import { attendanceToday } from '../../libs/validation/attendance-date';
 
 @Injectable()
 export class MemberService {
@@ -142,16 +143,15 @@ export class MemberService {
 		return result;
 	}
 
-	public async getAllMembersByAdmin(input: MembersInquiry): Promise<Members> {
+	public async getAllMembersByAdmin(input: MembersInquiry, memberId: ObjectId): Promise<Members> {
+		if (!memberId) throw new BadRequestException('Authenticated administrator required');
 		const { memberStatus, memberType, text } = input.search;
-		const match: T = {};
+		const match: T = { _id: { $ne: shapeIntoMongoObject(memberId) } };
 		const sort: T = { [input?.sort ?? 'createdAt']: input?.direction ?? Direction.DESC };
 
 		if (memberStatus) match.memberStatus = memberStatus;
 		if (memberType) match.memberType = memberType;
 		if (text) match.memberNick = { $regex: new RegExp(text, 'i') };
-
-		console.log('match:', match);
 
 		const result = await this.memberModel
 			.aggregate([
@@ -198,7 +198,18 @@ export class MemberService {
 			data.memberStatus = input.memberStatus;
 			data.deletedAt = input.memberStatus === MemberStatus.DELETE ? new Date() : null;
 		}
-		const result = await this.memberModel
+		let result: Member | null = null;
+		if (data.memberType === MemberType.AGENT) {
+			// Assign the first date atomically with the role, without overwriting an existing date.
+			result = await this.memberModel
+				.findOneAndUpdate(
+					{ _id: input._id, attendanceStartDate: null },
+					{ $set: { ...data, attendanceStartDate: attendanceToday() } },
+					{ new: true, runValidators: true },
+				)
+				.exec();
+		}
+		result ??= await this.memberModel
 			.findOneAndUpdate({ _id: input._id }, { $set: data }, { new: true, runValidators: true })
 			.exec();
 		if (!result) throw new InternalServerErrorException(Message.UPDATE_FAILED);

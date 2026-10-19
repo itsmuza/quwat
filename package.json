@@ -13,7 +13,7 @@
 		"start:dev:batch": "nest start quwat-batch --watch",
 		"start:debug": "nest start --debug --watch",
 		"start:prod": "NODE_ENV=production node dist/apps/quwat/main",
-		"start:prod:batch": "node dist/apps/quwat-batch/main",
+		"start:prod:batch": "NODE_ENV=production node dist/apps/quwat-batch/main",
 		"lint": "eslint \"apps/**/*.ts\"",
 		"test": "jest",
 		"test:watch": "jest --watch",

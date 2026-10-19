@@ -6,6 +6,8 @@ import { MeLiked } from '../like/like';
 import { TotalCounter } from '../member/member';
 @ObjectType()
 export class Product {
+	@Field(() => Boolean)
+	guestLiked!: boolean;
 	@Field(() => String)
 	_id!: ObjectId;
 	@Field(() => String)
@@ -48,6 +50,8 @@ export class Product {
 	updatedAt!: Date;
 	@Field(() => [MeLiked], { nullable: true })
 	meLiked?: MeLiked[];
+	@Field(() => Boolean)
+	meSaved?: boolean;
 }
 @ObjectType()
 export class Products {

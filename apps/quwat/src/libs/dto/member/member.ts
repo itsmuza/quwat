@@ -5,8 +5,12 @@ import { MeLiked } from '../like/like';
 
 @ObjectType()
 export class Member {
+	@Field(() => Boolean)
+	guestLiked!: boolean;
 	@Field(() => String)
 	_id!: string;
+	// Server-controlled tracking metadata, not a GraphQL profile field.
+	attendanceStartDate?: string | null;
 
 	@Field(() => MemberType)
 	memberType!: MemberType;
